@@ -1,15 +1,12 @@
 from fastapi import FastAPI, Request
 from protobuf.ticket.ticket import Ticket, Medicamento, MedicamentoType
 
-
-
 app = FastAPI()
 ticket = Ticket
 
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
-
 
 @app.post("/prototype")
 async def read_user(request: Request):
@@ -21,7 +18,6 @@ async def read_user(request: Request):
         print(med.name, med.quantidade, med.tipo)
 
     return 'teste'
-
 
 @app.get("/request")
 async def read_user():

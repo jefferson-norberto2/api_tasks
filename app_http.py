@@ -1,3 +1,4 @@
+import time
 from flask import Flask, request
 from scripts.scripts_sql import *
 from database import Database
@@ -15,11 +16,27 @@ class AppApi:
         self._task = proto_tasks.Task
         self._user_tasks = proto_tasks.User
     
+        # Register routes
+        self.register_routes()
+
+        # Create the database tables
+        self.create_tables()
+    
+    def register_routes(self):
+        self._app.add_url_rule('/sign_up_user', 'sign_up_user', self.sign_up_user, methods=['POST'])
+        self._app.add_url_rule('/login', 'login', self.login, methods=['POST'])
+        self._app.add_url_rule('/add_task', 'add_task', self.add_task, methods=['POST'])
+        self._app.add_url_rule('/get_tasks', 'get_tasks', self.get_tasks, methods=['POST'])
+        self._app.add_url_rule('/test_route', 'test_route', self.test_route, methods=['GET'])
+    
     def create_tables(self):
         self._database = Database(DATABASE_PATH)
         self._database.execute_query(CREATE_USER_TABLE)
         self._database.execute_query(CREATE_TASK_TABLE)
         self._database.close_connection()
+
+    def test_route(self):
+        return {'test': 'Executou em thread separada'}
     
     def sign_up_user(self):
         # Get user data from the request
@@ -29,10 +46,6 @@ class AppApi:
         self._database = Database(DATABASE_PATH)
         full_name = obj_user.name
         password = obj_user.password
-
-        print(full_name)
-        print(password)
-
         
         # Insert the user data into the database
         query = f'''
@@ -41,7 +54,6 @@ class AppApi:
                 {PASSWORD}
             ) VALUES ( ?, ?)
         '''
-
         values = (full_name, password)
 
         self._database.execute_query(query, values)
@@ -71,16 +83,18 @@ class AppApi:
         return {'user': True}
     
     def get_tasks(self):
+        print('Entrou')
         id = request.data
         id = int(id)
 
         self._database = Database(DATABASE_PATH)
+
         # Get the tasks data from the database
-        tasks = self._database.fetch_all(f'''
+        query = f'''
             SELECT * FROM {TASK_TABLE_NAME}
             WHERE {USER}={id}
-        ''')
-
+        '''
+        tasks = self._database.fetch_all(query)
         self._database.close_connection()
 
         # Create a list of tasks
@@ -92,7 +106,7 @@ class AppApi:
             task_send.user = str(task[2])
             user_tasks.tasks.append(task_send)
         # Return a response to the Flutter 
-        
+        print('Enviando tarefas')
         return user_tasks.SerializeToString()
     
     def login(self):
@@ -122,12 +136,6 @@ class AppApi:
             return 'User not found'
     
     def run(self):
-        self._app.add_url_rule('/sign_up_user', 'sign_up_user', self.sign_up_user, methods=['POST'])
-        self._app.add_url_rule('/login', 'login', self.login, methods=['POST'])
-        self._app.add_url_rule('/add_task', 'add_task', self.add_task, methods=['POST'])
-        self._app.add_url_rule('/get_tasks', 'get_tasks', self.get_tasks, methods=['POST'])
-
-        self.create_tables()
         try:
             self._app.run(host='localhost', port=5000, debug=True)
         except Exception as e:
