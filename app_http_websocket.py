@@ -17,6 +17,7 @@ class AppApi:
         self._task = proto_tasks.Task
         self._user_tasks = proto_tasks.User
         self.list_tasks = proto_tasks.User.tasks
+        self.total_tasks = 0
     
         # Register routes
         self.register_routes()
@@ -62,8 +63,10 @@ class AppApi:
         tasks = database.fetch_all(query)
         database.close_connection()
 
+        self.total_tasks = len(tasks)
+
         # Return a response to the Flutter 
-        self.socketio.emit('update_response', str(len(tasks)), namespace='/counter')
+        self.socketio.emit('update_response', str(self.total_tasks), namespace='/counter')
     
     def sign_up_user(self):
         # Get user data from the request
@@ -106,9 +109,9 @@ class AppApi:
         # Insert the pet data into the database
         database.execute_query(query, values)
 
-        self.socketio.emit('update_response', str(11), namespace='/counter')
+        self.total_tasks += 1
 
-        # Return a response to the Flutter application
+        self.socketio.emit('update_response', str(self.total_tasks), namespace='/counter')
         return {'user': True}
     
     def get_tasks(self):
