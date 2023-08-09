@@ -1,8 +1,7 @@
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO
 from flask import Flask, request
 from scripts.scripts_sql import *
 from database import Database
-import base64
 import protobuf.user.user as proto_user
 import protobuf.tasks.tasks as proto_tasks
 
@@ -14,7 +13,6 @@ class AppApi:
         self._app.config['SECRET_KEY'] = 'secret'
         self._app.config['SESSION_TYPE'] = 'filesystem'
         self.socketio = SocketIO(self._app, cors_allowed_origins='*', async_mode=None)
-        self._database = None
         self._user = proto_user.User
         self._task = proto_tasks.Task
         self._user_tasks = proto_tasks.User
@@ -34,39 +32,45 @@ class AppApi:
         self._app.add_url_rule('/login', 'login', self.login, methods=['POST'])
         self._app.add_url_rule('/add_task', 'add_task', self.add_task, methods=['POST'])
         self._app.add_url_rule('/get_tasks', 'get_tasks', self.get_tasks, methods=['POST'])
+        self._app.add_url_rule('/teste', 'teste', self.teste, methods=['GET'])
     
     def set_up_socket_events(self):
         self.socketio.on_event('update_request', self.counter_tasks, namespace='/counter')
+        self.socketio.on_event('disconnect', self.handle_disconnect)
     
     def create_tables(self):
         self._database = Database(DATABASE_PATH)
         self._database.execute_query(CREATE_USER_TABLE)
         self._database.execute_query(CREATE_TASK_TABLE)
         self._database.close_connection()
+
+    def teste(self):
+        print('teste')
+        self.socketio.emit('update_response', str(30), namespace='/counter')
+        return 'teste'
     
     def counter_tasks(self, message):
         print('counter')
         id = int(message)
-        self._database = Database(DATABASE_PATH)
+        database = Database(DATABASE_PATH)
 
         # Get the tasks data from the database
         query = f'''
             SELECT * FROM {TASK_TABLE_NAME}
             WHERE {USER}={id}
         '''
-        tasks = self._database.fetch_all(query)
-        self._database.close_connection()
+        tasks = database.fetch_all(query)
+        database.close_connection()
 
         # Return a response to the Flutter 
-        print('Enviando tarefas')
-        emit('update_response', str(len(tasks)))
+        self.socketio.emit('update_response', str(len(tasks)), namespace='/counter')
     
     def sign_up_user(self):
         # Get user data from the request
         message = request.data
         obj_user =  self._user.FromString(message)
 
-        self._database = Database(DATABASE_PATH)
+        database = Database(DATABASE_PATH)
         full_name = obj_user.name
         password = obj_user.password
         
@@ -79,8 +83,8 @@ class AppApi:
         '''
         values = (full_name, password)
 
-        self._database.execute_query(query, values)
-        self._database.close_connection()
+        database.execute_query(query, values)
+        database.close_connection()
 
         # Return a response to the Flutter application
         return {'user': True}
@@ -89,7 +93,7 @@ class AppApi:
         data = request.data
         task = self._task.FromString(data)
 
-        self._database = Database(DATABASE_PATH)
+        database = Database(DATABASE_PATH)
         # Get pet data from the request
         
 
@@ -100,25 +104,27 @@ class AppApi:
         values = (task.task, task.user_id)
 
         # Insert the pet data into the database
-        self._database.execute_query(query, values)
+        database.execute_query(query, values)
+
+        self.socketio.emit('update_response', str(11), namespace='/counter')
 
         # Return a response to the Flutter application
         return {'user': True}
     
     def get_tasks(self):
-        print('Entrou')
+        print('Get tasks')
         id = request.data
         id = int(id)
 
-        self._database = Database(DATABASE_PATH)
+        database = Database(DATABASE_PATH)
 
         # Get the tasks data from the database
         query = f'''
             SELECT * FROM {TASK_TABLE_NAME}
             WHERE {USER}={id}
         '''
-        tasks = self._database.fetch_all(query)
-        self._database.close_connection()
+        tasks = database.fetch_all(query)
+        database.close_connection()
 
         # Create a list of tasks
         user_tasks = proto_tasks.User()
@@ -135,18 +141,20 @@ class AppApi:
         message = request.data
         obj_user =  self._user.FromString(message)
 
-        self._database = Database(DATABASE_PATH)
+        database = Database(DATABASE_PATH)
         # # Get user data from the request
         name = obj_user.name
         password = obj_user.password
 
-        # Search for the user in the database
-        user = self._database.fetch_one(f'''
+        query = f'''
             SELECT * FROM users
             WHERE {USER_NAME}=? AND {PASSWORD}=?
-        ''', (name, password))
+        '''
+        values = (name, password)
+        # Search for the user in the database
+        user = database.fetch_one(query, values)
 
-        self._database.close_connection()
+        database.close_connection()
         # Return a response to the Flutter application
         if user:
             user_send = proto_user.User()
@@ -157,16 +165,15 @@ class AppApi:
         else:
             return 'User not found'
     
+    def handle_disconnect(self):
+        print("Client disconnected")
+    
     def run(self):
         try:
             # self._app.run(host='localhost', port=5000, debug=True)
             self.socketio.run(self._app, debug=True, host='localhost', port=5000)
         except Exception as e:
             print(e)
-
-    def __del__(self):
-        if self._database:
-            self._database.close_connection()
     
 if __name__ == '__main__':
     app = AppApi()
