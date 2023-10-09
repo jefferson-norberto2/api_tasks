@@ -174,7 +174,7 @@ class AppApi:
     def run(self):
         try:
             # self._app.run(host='localhost', port=5000, debug=True)
-            self.socketio.run(self._app, debug=True, host='localhost', port=5000)
+            self.socketio.run(self._app, debug=True, host='127.0.0.1', port=10100)
         except Exception as e:
             print(e)
     
