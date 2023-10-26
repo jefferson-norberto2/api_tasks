@@ -16,14 +16,6 @@ class WebSocketApp:
         self.camera = VideoCapture(0)
         self.play = True
 
-        # Inicie um loop em segundo plano para capturar e enviar os frames da câmera
-        # self.camera_thread = Thread(target=self.send_camera_frames)
-        # self.camera_thread.daemon = True
-        # self.camera_thread.start()
-
-        # Register routes
-        self.register_routes()
-
         # Set up WebSocket event handlers
         self.set_up_socket_events()
 
@@ -34,41 +26,16 @@ class WebSocketApp:
             if not ret:
                 break
 
-            # Codifique o frame para base64 para transmissão
+            # Convertendo o frame em JPEG e codificando-o como String
             _, buffer = imencode('.jpg', self.frame)
             jpg_as_text = b64encode(buffer).decode('utf-8')
 
-            # print('Sending frame...')
-            # Transmita o frame para todos os clientes WebSocket
+            # Enviando o frame para todos os clientes conectados
             self.socketio.emit('camera_frame', {'image': jpg_as_text}, namespace='/camera')
 
-            # Aguarde um pequeno intervalo (ajuste conforme necessário)
-            sleep(0.01)
+            # Aguardar um pequeno intervalo entre o envio de cada frame
+            sleep(0.016)
 
-    def register_routes(self):
-        self.app.route('/', methods=['GET', 'POST'])(self.index)
-
-    
-    def index(self):
-        return """
-        <html>
-        <head>
-            <title>Camera Stream</title>
-        </head>
-        <body>
-            <h1>Camera Stream</h1>
-            <img id="camera_image" src="" alt="Camera Feed" />
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-            <script>
-                var socket = io.connect('http://' + document.domain + ':' + location.port + '/camera');
-                
-                socket.on('camera_frame', function(data) {
-                    document.getElementById('camera_image').src = 'data:image/jpeg;base64,' + data.image;
-                });
-            </script>
-        </body>
-        </html>
-        """
 
     def set_up_socket_events(self):
         self.socketio.on_event('sign_up_user', self.sign_up_user, namespace='/user')
@@ -90,6 +57,11 @@ class WebSocketApp:
     
     def on_connect(self):
         print('User connected')
+        self.play = True
+    
+    def on_disconnect(self):
+        print('User disconnected')
+        self.play = False
 
 if __name__ == '__main__':
     app = WebSocketApp()
