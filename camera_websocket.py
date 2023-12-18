@@ -2,9 +2,9 @@ from flask import Flask, request
 from flask_socketio import SocketIO, emit
 from scripts.scripts_sql import *
 from cv2 import VideoCapture, imencode
-from threading import Thread
 from time import sleep
 from base64 import b64encode
+
 class WebSocketApp:
     def __init__(self):
         self.app = Flask(__name__)
@@ -16,6 +16,9 @@ class WebSocketApp:
         self.camera = VideoCapture(0)
         self.play = True
 
+        # Register routes
+        self.register_routes()
+
         # Set up WebSocket event handlers
         self.set_up_socket_events()
 
@@ -26,16 +29,19 @@ class WebSocketApp:
             if not ret:
                 break
 
-            # Convertendo o frame em JPEG e codificando-o como String
+            # Codifique o frame para base64 para transmissão
             _, buffer = imencode('.jpg', self.frame)
             jpg_as_text = b64encode(buffer).decode('utf-8')
 
-            # Enviando o frame para todos os clientes conectados
+
             self.socketio.emit('camera_frame', {'image': jpg_as_text}, namespace='/camera')
 
-            # Aguardar um pequeno intervalo entre o envio de cada frame
+            # Aguarde um pequeno intervalo (ajuste conforme necessário)
             sleep(0.016)
 
+    def register_routes(self):
+        # self.app.route('/', methods=['GET', 'POST'])(self.index)
+        pass
 
     def set_up_socket_events(self):
         self.socketio.on_event('sign_up_user', self.sign_up_user, namespace='/user')
