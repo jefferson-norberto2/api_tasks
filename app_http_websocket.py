@@ -33,7 +33,7 @@ class AppApi:
         self._app.add_url_rule('/sign_up_user', 'sign_up_user', self.sign_up_user, methods=['POST'])
         self._app.add_url_rule('/login', 'login', self.login, methods=['POST'])
         self._app.add_url_rule('/add_task', 'add_task', self.add_task, methods=['POST'])
-        self._app.add_url_rule('/get_tasks', 'get_tasks', self.get_tasks, methods=['POST'])
+        self._app.add_url_rule('/get_tasks', 'get_tasks', self.get_tasks, methods=['GET'])
     
     def set_up_socket_events(self):
         self.socketio.on_event('update_request', self.counter_tasks, namespace='/counter')
@@ -110,9 +110,8 @@ class AppApi:
         return {'user': True}
     
     def get_tasks(self):
-        print('Get tasks')
-        id = request.data
-        id = int(id)
+        id = request.headers.get('id')
+        id = int(id)    
 
         database = Database(DATABASE_PATH)
 
