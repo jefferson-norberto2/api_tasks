@@ -6,8 +6,6 @@ message Task{
     required string user_id = 3;
 }
 
-message User{
-    required string id = 1;
-    required string name = 2;
+message Tasks{
     repeated Task tasks = 3;
 }

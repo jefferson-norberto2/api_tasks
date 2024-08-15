@@ -16,8 +16,7 @@ class AppApi:
         self.socketio = SocketIO(self._app, cors_allowed_origins='*', async_mode=None)
         self._user = proto_user.User
         self._task = proto_tasks.Task
-        self._user_tasks = proto_tasks.User
-        self.list_tasks = proto_tasks.User.tasks
+        self._list_tasks = proto_tasks.Tasks
         self.total_tasks = 0
     
         # Register routes
@@ -46,7 +45,6 @@ class AppApi:
         self._database.close_connection()
     
     def counter_tasks(self, message):
-        print('counter')
         id = int(message)
         database = Database(DATABASE_PATH)
 
@@ -94,7 +92,6 @@ class AppApi:
         database = Database(DATABASE_PATH)
         # Get pet data from the request
         
-
         query = f''' INSERT INTO {TASK_TABLE_NAME} (
                                 {TASK},
                                 {USER}
@@ -107,7 +104,7 @@ class AppApi:
         self.total_tasks += 1
 
         self.socketio.emit('update_response', str(self.total_tasks), namespace='/counter')
-        return {'user': True}
+        return {'task': True}
     
     def get_tasks(self):
         id = request.headers.get('id')
@@ -124,7 +121,7 @@ class AppApi:
         database.close_connection()
 
         # Create a list of tasks
-        user_tasks = proto_tasks.User()
+        user_tasks = proto_tasks.Tasks()
         for task in tasks:
             task_send = proto_tasks.Task()
             task_send.id = str(task[0])
