@@ -1,2 +1,5 @@
 flask
 protobuf
+flask-socketio
+betterproto[compiler]
+eventlet

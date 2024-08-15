@@ -4,6 +4,7 @@ from scripts.scripts_sql import *
 from database import Database
 import protobuf.user.user as proto_user
 import protobuf.tasks.tasks as proto_tasks
+from eventlet import listen, wsgi
 
 
 # Create a Flask application
@@ -33,7 +34,6 @@ class AppApi:
         self._app.add_url_rule('/login', 'login', self.login, methods=['POST'])
         self._app.add_url_rule('/add_task', 'add_task', self.add_task, methods=['POST'])
         self._app.add_url_rule('/get_tasks', 'get_tasks', self.get_tasks, methods=['POST'])
-        self._app.add_url_rule('/teste', 'teste', self.teste, methods=['GET'])
     
     def set_up_socket_events(self):
         self.socketio.on_event('update_request', self.counter_tasks, namespace='/counter')
@@ -44,11 +44,6 @@ class AppApi:
         self._database.execute_query(CREATE_USER_TABLE)
         self._database.execute_query(CREATE_TASK_TABLE)
         self._database.close_connection()
-
-    def teste(self):
-        print('teste')
-        self.socketio.emit('update_response', str(30), namespace='/counter')
-        return 'teste'
     
     def counter_tasks(self, message):
         print('counter')
@@ -173,8 +168,7 @@ class AppApi:
     
     def run(self):
         try:
-            # self._app.run(host='localhost', port=5000, debug=True)
-            self.socketio.run(self._app, debug=True, host='127.0.0.1', port=10100)
+            wsgi.server(listen(('127.0.0.1', 10100)), self._app)
         except Exception as e:
             print(e)
     
