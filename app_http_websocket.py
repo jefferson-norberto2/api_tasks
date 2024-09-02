@@ -33,6 +33,7 @@ class AppApi:
         self._app.add_url_rule('/login', 'login', self.login, methods=['POST'])
         self._app.add_url_rule('/add_task', 'add_task', self.add_task, methods=['POST'])
         self._app.add_url_rule('/get_tasks', 'get_tasks', self.get_tasks, methods=['GET'])
+        self._app.add_url_rule('/remove_task_by_id', 'remove_task_by_id', self.remove_task_by_id, methods=['DELETE'])
     
     def set_up_socket_events(self):
         self.socketio.on_event('update_request', self.counter_tasks, namespace='/counter')
@@ -116,6 +117,7 @@ class AppApi:
         query = f'''
             SELECT * FROM {TASK_TABLE_NAME}
             WHERE {USER}={id}
+            ORDER BY id DESC
         '''
         tasks = database.fetch_all(query)
         database.close_connection()
@@ -126,11 +128,29 @@ class AppApi:
             task_send = proto_tasks.Task()
             task_send.id = str(task[0])
             task_send.task = task[1]
-            task_send.user = str(task[2])
+            task_send.user_id = str(task[2])
             user_tasks.tasks.append(task_send)
         # Return a response to the Flutter 
         return user_tasks.SerializeToString()
     
+    def remove_task_by_id(self):
+        id = request.headers.get('id')
+        id = int(id)  
+
+        database = Database(DATABASE_PATH)
+
+        query = f'''
+            DELETE FROM {TASK_TABLE_NAME}
+            WHERE id={id}
+        '''
+
+        task = database.fetch_all(query)
+
+        if task:
+            return {'task': True}
+        else:
+            return 'Task not found'
+
     def login(self):
         message = request.data
         obj_user =  self._user.FromString(message)
@@ -158,6 +178,8 @@ class AppApi:
             return user_send.SerializeToString()
         else:
             return 'User not found'
+        
+
     
     def handle_disconnect(self):
         print("Client disconnected")
